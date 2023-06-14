@@ -4,7 +4,13 @@ const path = require('path')
 
 // PATH WHERE I HAVE MY JSON FILES
 
-const DatasetPath = '/1_corridoioAltair_newHumanWs/jsons/human_workspace_jsons'
+// const DatasetPath = '/Users/mariusonofrei/UNIVERSITY/Univr_Sonification/Object_sonification_via_websocket_data/1_corridoioAltair_newHumanWs/jsons/human_workspace_jsons'
+// const DatasetPath = '/Users/mariusonofrei/UNIVERSITY/Univr_Sonification/Object_sonification_via_websocket_data/1_corridoioAltair_smoothMap2d/jsons/human_workspace_jsons'
+
+
+const DatasetPath = './1_corridoioAltair_smoothMap2d/jsons/human_workspace_jsons'
+// const DatasetPath = './bagchair2_outputs/jsons/human_workspace_jsons'
+
 
 
 // const TfMatricesPath = '1_corridoioAltair_newjsons/tf_saved'
@@ -13,7 +19,7 @@ const DatasetPath = '/1_corridoioAltair_newHumanWs/jsons/human_workspace_jsons'
 WebSocketServer = require('ws').Server;
 
 // define port value
-var port = 9998;
+var port = 9090;
 
 // open up websocketserver at port
 wss = new WebSocketServer({ port: port });
@@ -21,7 +27,7 @@ wss = new WebSocketServer({ port: port });
 // just state what port u are listening to
 console.log('listening on port: ' + port);
 
-// Defining a sleep function
+// Defining a sleep function .. what for ? 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -75,7 +81,8 @@ async function readAndSendData(websocket) {
         // console.log('Decoded: seconds - '+ date.getSeconds() + ', msec - '+date.getMilliseconds()+', msec to wait - '+elapsed_msec);
         
         if(event_cnt>0){ // only start waiting after receiving the second file..
-         await sleep(Math.round(elapsed_msec));
+            await sleep(Math.round(elapsed_msec));
+            // await sleep(Math.round(3000));
         }
 
         console.log('Ros Timestamp: %d, converted to time %s, elapsed msec %d ', ts, datevalues, elapsed_msec);

@@ -4,6 +4,8 @@
 
 // TONE.JS PART
 let flag_audio_on_off = false; // initialize global audio on/off flag
+let flagAllSounds = false;
+let flagAllSounds_reset = false;
 
 // Synth pattern:
 // Loop for synth 
@@ -20,7 +22,6 @@ const freeverb = new Tone.Freeverb(0.3,5000);
 // create a gain node
 const gainNode = new Tone.Gain(0.0);
 
-
 //connect freeverb to gain
 freeverb.connect(gainNode); // synth goes to gain !
 
@@ -29,6 +30,157 @@ gainNode.toDestination();
 
 gainNode.gain.rampTo(db2mag(-6), 0.1);
 
+
+// Initialize sonifiedObjects
+let sonifiedObjects = {};
+
+
+// // Try to make a global loop to go through each sonified object at a time.. 
+// let loopGlobal = new Tone.Loop(loopStep, "1n");  // '1n' here sets the speed of our loop -- every 1th note
+
+count = 0;
+
+
+
+let loopGlobal;
+loopGlobal = new Tone.Loop(loopStep, "1n");  // '1n' here sets the speed of our loop -- every 1th note
+
+
+
+let intervalVal = loopGlobal.interval;
+
+function loopStep(time){
+    let sonifiedObjects_keys = Object.keys(sonifiedObjects);
+    let objectsPlaying = [];
+    let objectsNotPlaying = [];
+
+    // console.log(sonifiedObjects);
+
+    for (let i = 0; i<sonifiedObjects_keys.length;i++)
+    {
+        if (sonifiedObjects[sonifiedObjects_keys[i]].playingFlag)
+        {
+            // objectsPlaying[sonifiedObjects_keys[i]] = sonifiedObjects[sonifiedObjects_keys[i]];
+            objectsPlaying.push(sonifiedObjects[sonifiedObjects_keys[i]]);
+        }
+        else
+        {
+            objectsNotPlaying.push(sonifiedObjects[sonifiedObjects_keys[i]]);
+        }
+    }
+
+    console.log(flagAllSounds);
+    console.log(objectsPlaying);
+    console.log(objectsNotPlaying);
+
+    // make sure objects that are not playing are stopped.. 
+    for (let i = 0;i<objectsNotPlaying.length;i++)
+    {
+        if (objectsNotPlaying[i] instanceof droneSonification)
+        {
+            objectsNotPlaying[i].envelope.triggerRelease();
+        }
+        else if (objectsNotPlaying[i] instanceof synthLoopSonification)
+        {
+            objectsNotPlaying[i].loop.stop(); // start the synthSonification loop
+        }
+    }   
+
+    // if there has just been a change, stop all objects.. 
+    if (flagAllSounds_reset)
+    {
+        // make sure objects that are not playing are stopped.. 
+        for (let i = 0;i<objectsPlaying.length;i++)
+        {
+            if (objectsPlaying[i] instanceof droneSonification)
+            {
+                objectsPlaying[i].envelope.triggerRelease();
+            }
+            else if (objectsPlaying[i] instanceof synthLoopSonification)
+            {
+                objectsPlaying[i].loop.stop(); // start the synthSonification loop
+            }
+        }   
+        flagAllSounds_reset = false;
+    }
+
+    // console.log(objectsPlaying);
+    if (flagAllSounds)
+    {
+        for (let i = 0;i<objectsPlaying.length;i++)
+        {
+            if (objectsPlaying[i] instanceof droneSonification)
+            {
+                objectsPlaying[i].envelope.triggerAttack();
+                // objectsPlaying[i].envelope.triggerRelease(('+'+String(loopGlobal.interval/2)));
+            }
+            else if (objectsPlaying[i] instanceof synthLoopSonification)
+            {
+                objectsPlaying[i].loop.start(); // start the synthSonification loop
+                // objectsPlaying[i].loop.stop('+'+String(loopGlobal.interval/2)); // start the synthSonification loop
+            }
+        }     
+    }
+    else
+    {
+        // console.log('here');
+        if (objectsPlaying.length > 0)
+        {
+            if (count>=objectsPlaying.length) {count = 0;};
+    
+            if (objectsPlaying[count] instanceof droneSonification)
+            {
+                // objectsPlaying[count].envelope.triggerAttackRelease('1n',time);
+                objectsPlaying[count].envelope.triggerAttackRelease(String(intervalVal),time);
+            }
+            else if (objectsPlaying[count] instanceof synthLoopSonification)
+            {
+                objectsPlaying[count].loop.start(); // start the synthSonification loop
+                // objectsPlaying[count].loop.stop('+1n'); // close it at a future time.. 
+                objectsPlaying[count].loop.stop('+'+String(intervalVal)); // close it at a future time.. 
+            }
+            count = count + 1;
+        }
+    }
+}
+
+
+const checkbox_sounds = document.getElementById("checkbox_sounds");
+
+checkbox_sounds.addEventListener("change", () => {
+    flagAllSounds = !flagAllSounds;
+    flagAllSounds_reset = true;
+    console.log(flagAllSounds);
+});
+
+
+
+//attach a click listener to a play button
+const button_1 = document.getElementById("button_1");
+const button_2 = document.getElementById("button_2");
+
+button_1.addEventListener("click", async () => {
+    await Tone.start();
+    console.log("audio is ready");
+
+    Tone.Transport.bpm.value = 60;
+
+    // start the transport (i.e. the "clock" that drives the loop)
+    Tone.Transport.start();
+
+    loopGlobal.start();
+
+});
+
+button_2.addEventListener("click", async () => {
+    console.log("stopping all sounds!");
+
+    Tone.Transport.stop(); // this just stops the master time.. 
+ 
+});
+
+
+// ADD SLIDER FUNCTIONS
 
 function setGain(v) {
     let gainVal = linearMapping(-30.0, 10.0, 0, 10000, v); // db linear Scale
@@ -41,75 +193,14 @@ function setGain(v) {
     gainNode.gain.rampTo(gainVal_amp, 0.1);
 }
 
-function setRoomSize(v) {
-    let roomSizeVal = linearMapping(0.0, 1.0, 0, 10000, v); // db linear Scale
-    freeverb.roomSize.value = roomSizeVal;
-    document.getElementById('RoomSize').innerText = parseFloat(roomSizeVal).toFixed(4);
-    // console.log(freeverb.roomSize.value );
+function setLoopTime(v) {
+    intervalVal = linearMapping(0.1, 5.0, 0, 10000, v); // db linear Scale
+
+    document.getElementById('Interval').innerText = parseFloat(intervalVal).toFixed(4);
+    // gainNode.gain.value = gainVal;
+    loopGlobal.interval = intervalVal;
 }
 
-function setDampening(v) {
-    let dampSize = linearMapping(0.0, 10000.0, 0, 10000, v); 
-    freeverb.dampening = dampSize;  // weird that it doesn't have .value ... 
-    document.getElementById('Dampening').innerText = parseFloat(dampSize).toFixed(4);
-    // console.log(freeverb.dampening);
-}
-
-
-// Initialize sonifiedObjects
-let sonifiedObjects = {};
-
-
-//attach a click listener to a play button
-const button_1 = document.getElementById("button_1");
-const button_2 = document.getElementById("button_2");
-
-button_1.addEventListener("click", async () => {
-    await Tone.start();
-    console.log("audio is ready");
-
-    // start the transport (i.e. the "clock" that drives the loop)
-    Tone.Transport.start();
-
-    // SET THE GLOBAL BPM VAL !  
-    // Tone.Transport.bpm.value = 240; // working with '4n', i.e. quarter notes afterwards.. so equivalent to '8n' eigth notes at 120 bpm
-    // play with rampTo and change bpm ? 
-
-    // loop.start(0);
-
-    // synthLoop_instance.synth.volume.rampTo(-Infinity,0.1);
-    // drone_instance.oscillators.forEach(o => {
-    //     o.volume.rampTo(-Infinity,0.1);
-    // });
-
-    flag_audio_on_off = true;
-});
-
-button_2.addEventListener("click", async () => {
-    console.log("stopping all sounds!");
-
-    Tone.Transport.stop(); // this just stops the master time.. 
-    // Tone.stop(); // this just stops the master time.. 
-
-    // Stop sonified objects that are playing
-    for (var index = 0; index < Object.keys(sonifiedObjects).length; index++)
-    {                    
-        if (sonifiedObjects[unique_ids_playing[index]] instanceof synthLoopSonification){
-            sonifiedObjects[unique_ids_playing[index]].synth.volume.rampTo(-Infinity, 0.1);
-            sonifiedObjects[unique_ids_playing[index]].loop.stop();
-            sonifiedObjects[unique_ids_playing[index]].panner.disconnect(freeverb);
-        }
-        if (sonifiedObjects[unique_ids_playing[index]] instanceof droneSonification){
-            sonifiedObjects[unique_ids_playing[index]].oscillators.forEach((o, index) => { // this can be added in the class.. 
-                o.volume.rampTo(-Infinity, 1);
-                o.stop();
-            });
-            sonifiedObjects[unique_ids_playing[index]].panner.disconnect(freeverb);
-        }   
-    }
-
-    flag_audio_on_off = false;
-});
 
 
 // Clear console after load.. 

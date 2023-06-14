@@ -1,2 +1,1 @@
-# Vis-a-Vis
-sonification demo
+# Object_sonification_real_time_try
